@@ -9,7 +9,8 @@ public class MinimaxAI
 
     public UnitAction FindBestActionForUnit(GameState state, UnitData unit, int depth)
     {
-        var possibleActions = state.GetPossibleUnitActions(unit);
+        var possibleActions = state.GetPossibleUnitActions(unit, false);
+
         UnitAction bestAction = null;
         int bestScore = int.MinValue;
 
@@ -26,12 +27,30 @@ public class MinimaxAI
 
             int score = Minimax(copy, depth - 1, false, int.MinValue, int.MaxValue);
 
+            // Приоритет атаки: 
+            if (action.AttackTarget != null)
+            {
+                score += 500;
+            }
+
+            string actionName = action.AttackTarget != null ? $"Атака {action.AttackTarget.Name}" :
+                               (action.MoveTo != unit.Cell ? "Движение" : "Ожидание");
+            // Debug.Log($"[AI] Действие: {actionName} | Оценка: {score}");
+
             if (score > bestScore)
             {
                 bestScore = score;
                 bestAction = action;
             }
         }
+
+        if (bestAction != null)
+        {
+            string bestName = bestAction.AttackTarget != null ? $"Атака {bestAction.AttackTarget.Name}" :
+                             (bestAction.MoveTo != unit.Cell ? "Движение" : "Ожидание");
+            Debug.Log($"<color=red>[AI] ВЫБРАНО: {bestName} (Оценка: {bestScore})</color>");
+        }
+
         return bestAction;
     }
 
@@ -41,13 +60,12 @@ public class MinimaxAI
 
         Team currentSimTeam = maximizing ? aiTeam : Opponent(aiTeam);
 
-        var simUnit = state.Units.Find(u => u.Team == currentSimTeam && u.IsAlive);
-
+        UnitData simUnit = GetMostThreateningUnit(state, currentSimTeam);
         if (simUnit == null) return Evaluate(state);
 
         simUnit.ResetTurnState();
 
-        var actions = state.GetPossibleUnitActions(simUnit);
+        var actions = state.GetPossibleUnitActions(simUnit, false);
 
         if (maximizing)
         {
@@ -89,6 +107,35 @@ public class MinimaxAI
         }
     }
 
+    private UnitData GetMostThreateningUnit(GameState state, Team team)
+    {
+        UnitData bestUnit = null;
+        int minDistanceToEnemy = int.MaxValue;
+
+        foreach (var u in state.Units)
+        {
+            if (u.Team != team || !u.IsAlive) continue;
+
+            foreach (var enemy in state.Units)
+            {
+                if (enemy.IsAlive && u.IsEnemy(enemy))
+                {
+                    int dist = u.Cell.DistanceTo(enemy.Cell);
+                    if (dist < minDistanceToEnemy)
+                    {
+                        minDistanceToEnemy = dist;
+                        bestUnit = u;
+                    }
+                }
+            }
+        }
+
+        if (bestUnit == null)
+            bestUnit = state.Units.Find(u => u.Team == team && u.IsAlive);
+
+        return bestUnit;
+    }
+
     private int Evaluate(GameState state)
     {
         int score = 0;
@@ -96,28 +143,31 @@ public class MinimaxAI
         {
             if (!u.IsAlive) continue;
 
-            int unitValue = u.Health + u.AttackDamage * 3; // Ценность юнита
+            int unitValue = u.Health + u.AttackDamage * 2;
 
             if (u.Team == aiTeam)
             {
                 score += unitValue;
 
-                // Бонус за то что враг в зоне атаки
+                // Бонус за то, что враг в зоне атаки
                 foreach (var enemy in state.Units)
                 {
                     if (enemy.IsAlive && u.IsEnemy(enemy) && u.Cell.DistanceTo(enemy.Cell) <= u.AttackRange)
-                        score += 30;
+                        score += 150;
                 }
 
-                // Штраф за расстояние до ближайшего врага
+                // Заставляем ИИ двигаться если он дажеко
                 int minDist = int.MaxValue;
                 foreach (var enemy in state.Units)
                 {
                     if (enemy.IsAlive && u.IsEnemy(enemy))
                         minDist = Mathf.Min(minDist, u.Cell.DistanceTo(enemy.Cell));
                 }
+
                 if (minDist != int.MaxValue)
-                    score -= minDist * 5; 
+                {
+                    score -= minDist * 5; // -5 очков за гекс
+                }
             }
             else
             {
