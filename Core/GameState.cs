@@ -91,6 +91,8 @@ public class GameState
         var unit = action.Unit;
         if (unit == null || !unit.IsAlive) return false;
 
+        // if (unit.HasAttacked) return false;
+
         bool willMove = action.MoveTo != null && action.MoveTo != unit.Cell;
         int moveCost = 0;
 
@@ -148,7 +150,7 @@ public class GameState
         }
     }
 
-    public List<UnitAction> GetPossibleUnitActions(UnitData unit)
+    public List<UnitAction> GetPossibleUnitActions(UnitData unit, bool allowWait = true)
     {
         var actions = new List<UnitAction>();
         if (!unit.IsAlive) return actions;
@@ -158,9 +160,11 @@ public class GameState
 
         foreach (var dest in candidateCells)
         {
+            // Движение без атаки
             if (dest != unit.Cell)
                 actions.Add(new UnitAction(unit, dest, null));
 
+            // Атака
             if (!unit.HasAttacked)
             {
                 foreach (var enemy in Units)
@@ -174,7 +178,13 @@ public class GameState
             }
         }
 
-        actions.Add(new UnitAction(unit, unit.Cell, null)); 
+        // Ожидание только если разрешено
+        if (allowWait)
+        {
+            bool hasWait = actions.Exists(a => a.MoveTo == unit.Cell && a.AttackTarget == null);
+            if (!hasWait) actions.Add(new UnitAction(unit, unit.Cell, null));
+        }
+
         return actions;
     }
 
