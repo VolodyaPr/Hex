@@ -135,8 +135,15 @@ public class GameController : MonoBehaviour
     {
         if (!State.ApplyUnitAction(realAction)) return;
 
+        if (realAction.AttackTarget != null)
+        {
+            Debug.Log($"<color=orange>[БОЙ]</color> {realAction.Unit.Name} наносит {realAction.Unit.AttackDamage} урона юниту {realAction.AttackTarget.Name}. " +
+                      $"Осталось HP: {Mathf.Max(0, realAction.AttackTarget.Health)}");
+        }
+
         if (realAction.AttackTarget != null && !realAction.AttackTarget.IsAlive)
         {
+            Debug.Log($"<color=red>[БОЙ]</color> Юнит {realAction.AttackTarget.Name} УНИЧТОЖЕН!");
             if (unitObjects.TryGetValue(realAction.AttackTarget.Id, out var deadObj))
             {
                 unitObjects.Remove(realAction.AttackTarget.Id);
