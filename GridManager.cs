@@ -112,10 +112,7 @@ public class GridManager : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             if (gameController != null && gameController.IsBusy) return;
-
             if (turnManager == null || turnManager.ActiveUnit == null || turnManager.ActiveUnit.Team != Team.Player) return;
-
-            if (gameController == null || gameController.State == null) return;
 
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
@@ -127,7 +124,10 @@ public class GridManager : MonoBehaviour
                     if (unit != null) clicked = unit.CurrentCell;
                 }
 
-                if (clicked != null) HandleClick(clicked);
+                if (clicked != null)
+                {
+                    HandleClick(clicked);
+                }
             }
         }
     }
